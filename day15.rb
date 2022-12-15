@@ -7,9 +7,7 @@ test_row = 2_000_000
 # input = 'input/day15_test.txt'
 # test_row = 10
 
-f = File.open(input)
-lines = f.readlines.map(&:rstrip).map { |line| line.split(/Sensor at x=|, y=|: closest beacon is at x=/) }
-f.close
+lines = File.readlines(input).map(&:rstrip).map { |line| line.split(/Sensor at x=|, y=|: closest beacon is at x=/) }
 
 report = lines.map do |line|
   sx = line[1].to_i
@@ -52,8 +50,10 @@ puts empty_count
 
 # = part 2 =
 
+max_coord = 2 * test_row
+
 found = false
-(0..(2 * test_row)).each do |y|
+(0..max_coord).each do |y|
   xranges = []
   report.each do |sx, sy, bx, by|
     d = (sx - bx).abs + (sy - by).abs # distance from sensor to beacon
@@ -61,22 +61,24 @@ found = false
     next unless dy <= d # test row y is close enough to this sensor
 
     dx = d - dy
-    rx1 = [0, sx - dx].max
-    rx2 = [2 * test_row, sx + dx].min
+    rx1 = sx - dx
+    rx1 = 0 if rx1 < 0
+    rx2 = sx + dx
+    rx2 = max_coord if rx2 > max_coord
     xranges << [rx1, rx2] if rx1 <= rx2
   end
   xranges.sort_by!(&:first)
-  x1 = x2 = nil
+  x2 = nil
   xranges.each do |rx1, rx2|
     if x2 && rx1 <= x2 + 1 # ranges overlap or touch
       x2 = rx2 if rx2 > x2
     else # first range or gap found
-      if (x2 && rx1 - x2 == 2) || (!x2 && rx1 == 1)
+      found = x2 ? rx1 - x2 == 2 : rx1 == 1
+      if found
         puts (rx1 - 1) * 4_000_000 + y
-        found = true
+        puts "y=#{y}"
         break
       end
-      x1 = rx1
       x2 = rx2
     end
   end
