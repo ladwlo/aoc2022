@@ -4,28 +4,65 @@ import (
   "fmt"
   "os"
   "bufio"
-  "encoding/json"
   "sort"
+  "time"
 )
 
-func isNum(e interface{}) bool {
+func addDigit(number int, char byte) int {
+  if number < 0 {
+    return int(char)
+  }
+  return 10 * number + int(char)
+}
+
+func parse(line string) []any {
+  stack := make([][]any, 64)
+  stackTop := -1
+  var list []any
+  var number int = -1
+  for i := 0; i < len(line); i++ {
+    c := line[i]
+    if c == '[' {
+      if list != nil {
+        stackTop += 1
+        stack[stackTop] = list
+      }
+      list = make([]any, 0)
+    } else if c == ']' || c == ',' {
+      if number >= 0 {
+        list = append(list, number)
+        number = -1
+      }
+      if c == ']' {
+        if stackTop < 0 {
+          return list
+        }
+        list = append(stack[stackTop], list)
+        stackTop -= 1
+      }
+    } else {
+      number = addDigit(number, c)
+    }
+  }
+  return nil // should never reach this line
+}
+
+func isNum(e any) bool {
   switch e.(type) {
-    case float64:
+    case int:
       return true
   }
   return false
 }
 
-func wrap(e interface{}) []interface{} {
+func wrap(e any) []any {
   if isNum(e) {
-    wrapped := make([]interface{}, 1)
-    wrapped[0] = e
-    return wrapped
+    return []any{e}
   }
-  return e.([]interface{})
+  return e.([]any)
 }
 
-func cmp(l1, l2 []interface{}) int {
+func cmp(l1, l2 []any) int {
   n := len(l1)
   if len(l2) < n {
     n = len(l2)
@@ -35,7 +72,7 @@ func cmp(l1, l2 []interface{}) int {
     e2 := l2[i]
     var c int
     if isNum(e1) && isNum(e2) {
-      c = int(e1.(float64)) - int(e2.(float64))
+      c = e1.(int) - e2.(int)
     } else {
       c = cmp(wrap(e1), wrap(e2))
     }
@@ -47,19 +84,37 @@ func cmp(l1, l2 []interface{}) int {
 }
 
 func main() {
+  start := time.Now()
+  overallStart := start
+
   f, _ := os.Open("../aoc2022/input/day13.txt")
   sc := bufio.NewScanner(f)
   sc.Split(bufio.ScanLines)
-  var lists [][]interface{}
+  var lists [][]any
   for sc.Scan() {
-    var list []interface{}
     line := sc.Text()
     if line != "" {
-      json.Unmarshal([]byte(line), &list)
-      lists = append(lists, list)
+      lists = append(lists, parse(line))
     }
   }
   f.Close()
+
+//   f, _ := os.Open("../aoc2022/input/day13.txt")
+//   sc := bufio.NewScanner(f)
+//   sc.Split(bufio.ScanLines)
+//   var lists [][]any
+//   for sc.Scan() {
+//     var list []any
+//     line := sc.Text()
+//     if line != "" {
+//       json.Unmarshal([]byte(line), &list)
+//       lists = append(lists, list)
+//     }
+//   }
+//   f.Close()
+
+  parseTime := time.Since(start)
+  start = time.Now()
 
   n := len(lists) / 2
   sum := 0
@@ -70,12 +125,12 @@ func main() {
   }
   fmt.Println(sum)
 
-  var m2 []interface{}
-  json.Unmarshal([]byte("[[2]]"), &m2)
-  var m6 []interface{}
-  json.Unmarshal([]byte("[[6]]"), &m6)
-  markers := [][]interface{}{m2, m6}
-  lists = append(lists, markers...)
+  part1Time := time.Since(start)
+  start = time.Now()
+
+  m2 := parse("[[2]]")
+  m6 := parse("[[6]]")
+  lists = append(lists, m2, m6)
   sort.Slice(lists, func(i, j int) bool {
     return cmp(lists[i], lists[j]) < 0
   })
@@ -90,5 +145,11 @@ func main() {
     }
   }
   fmt.Println(i2 * i6)
-}
 
+  part2Time := time.Since(start)
+
+  fmt.Println("Parsing: ", parseTime)
+  fmt.Println("Part 1: ", part1Time)
+  fmt.Println("Part 2: ", part2Time)
+  fmt.Println("Overall time: ", time.Since(overallStart))
+}
