@@ -62,6 +62,63 @@ def max_pressure_release(remaining_time, initial_valve, valve_sequence, distance
   [result + remaining_time * initial_valve.rate, [initial_valve.id, *best_seq]]
 end
 
-res, seq = max_pressure_release(30, graph['AA'], graph.except('AA').values, distances)
+valves_to_remove = graph.except('AA').values
+res, seq = max_pressure_release(30, graph['AA'], valves_to_remove, distances)
 puts res
 puts seq.inspect
+
+# == part 2 ==
+
+@graph = graph
+@max_release = 0
+@best_seq_m = []
+@best_seq_e = []
+
+# recursively explore different possible sequences of valve opening
+def dig_down(release_so_far, seq_m, seq_e, remaining_time_m, remaining_time_e, remaining_valves, distances)
+  if (remaining_time_m <= 0 && remaining_time_e <= 0) || remaining_valves.empty?
+    if release_so_far > @max_release
+      @max_release = release_so_far
+      @best_seq_m = seq_m
+      @best_seq_e = seq_e
+    end
+    return
+
+  end
+
+  final_step = true
+  if remaining_time_m >= remaining_time_e
+    # my turn
+    remaining_valves.each do |valve|
+      time = remaining_time_m - distances[seq_m.last][valve.id] - 1
+      next unless time.positive?
+
+      final_step = false
+      release = release_so_far + time * valve.rate
+      dig_down(release, seq_m + [valve.id], seq_e, time, remaining_time_e, remaining_valves - [valve], distances)
+    end
+  else
+    # elephant's turn
+    remaining_valves.each do |valve|
+      time = remaining_time_e - distances[seq_e.last][valve.id] - 1
+      next unless time.positive?
+
+      final_step = false
+      release = release_so_far + time * valve.rate
+      dig_down(release, seq_m, seq_e + [valve.id], remaining_time_m, time, remaining_valves - [valve], distances)
+    end
+  end
+  return unless final_step && release_so_far > @max_release
+
+  @max_release = release_so_far
+  @best_seq_m = seq_m
+  @best_seq_e = seq_e
+end
+
+time = Time.now
+remaining_valves = graph.except('AA').values
+dig_down(0, ['AA'], ['AA'], 26, 26, remaining_valves, distances)
+puts @max_release
+puts @best_seq_m.inspect
+puts @best_seq_e.inspect
+puts (Time.now - time).to_s
