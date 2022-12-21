@@ -1,36 +1,18 @@
-numbers = File.open('input/day20_test.txt').readlines.map(&:rstrip).map(&:to_i)
-n = numbers.length
+start_time = Time.now
 
-indices = (0..(n - 1)).map(&:itself)
+input = File.open('input/day20.txt').readlines.map(&:rstrip).map(&:to_i)
 
-(0..(n - 1)).each do |original_index|
-  shuffled_index = indices.index(original_index)
-  number = numbers[shuffled_index]
-  # puts "Picking #{number} at #{shuffled_index}"
-  new_index = (shuffled_index + number) % (n - 1)
-  indices.delete_at(shuffled_index)
-  indices.insert(new_index, original_index)
-  numbers.delete_at(shuffled_index)
-  numbers.insert(new_index, number)
-  # puts numbers.inspect
+# === common stuff ===
+
+def range(numbers)
+  0..(numbers.length - 1)
 end
 
-zero_index = numbers.index(0)
-
-sum = [1000, 2000, 3000].map { |offset| numbers[(zero_index + offset) % n] }.reduce(&:+)
-
-puts "Part 1: #{sum}"
-
-
-numbers = File.open('input/day20.txt').readlines.map(&:rstrip).map(&:to_i).map { |x| x * 811589153 }
-n = numbers.length
-
-indices = (0..(n - 1)).map(&:itself)
-10.times do
-  (0..(n - 1)).each do |original_index|
+def shuffle(numbers, indices)
+  range(numbers).each do |original_index|
     shuffled_index = indices.index(original_index)
     number = numbers[shuffled_index]
-    new_index = (shuffled_index + number) % (n - 1)
+    new_index = (shuffled_index + number) % (numbers.length - 1)
     indices.delete_at(shuffled_index)
     indices.insert(new_index, original_index)
     numbers.delete_at(shuffled_index)
@@ -38,8 +20,27 @@ indices = (0..(n - 1)).map(&:itself)
   end
 end
 
-zero_index = numbers.index(0)
+def final_sum(numbers)
+  zero_index = numbers.index(0)
+  [1000, 2000, 3000].map { |offset| numbers[(zero_index + offset) % numbers.length] }.reduce(&:+)
+end
 
-sum = [1000, 2000, 3000].map { |offset| numbers[(zero_index + offset) % n] }.reduce(&:+)
+# === part 1 ===
 
-puts "Part 2: #{sum}"
+numbers = Array.new(input)
+indices = range(numbers).map(&:itself)
+
+shuffle(numbers, indices)
+
+puts "Part 1: #{final_sum(numbers)}"
+
+# === part 1 ===
+
+numbers = input.map { |x| x * 811_589_153 }
+indices = range(numbers).map(&:itself)
+
+10.times { shuffle(numbers, indices) }
+
+puts "Part 2: #{final_sum(numbers)}"
+
+puts "Exec time: #{Time.now - start_time}"
