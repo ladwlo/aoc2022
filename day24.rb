@@ -1,5 +1,3 @@
-require 'set'
-
 start_time = Time.now
 
 test_run = false
@@ -8,48 +6,46 @@ test_run = false
 blizzards = []
 @input.each_with_index do |line, y|
   line.chars.each_with_index do |c, x|
-    blizzards.append([x, y, c]) if '>^<v'.include?(c)
+    case c
+    when '<' then blizzards.append([x, y, -1, 0])
+    when '^' then blizzards.append([x, y, 0, -1])
+    when '>' then blizzards.append([x, y, 1, 0])
+    when 'v' then blizzards.append([x, y, 0, 1])
+    end
   end
 end
 
-MOVES = [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]]
+MOVES = [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]].freeze
 
-def shortest_travel_time(start_loc, end_loc, blizzards, w, h)
-  step = 0
-  next_set = Set.new([start_loc])
+def travel_from_to(start_loc, end_loc, blizzards, w, h, step)
+  queued_locations = [start_loc]
+  visited = Array.new(h) { Array.new(w) }
+  blizzard_presence = Array.new(h) { Array.new(w) }
   loop do
     step += 1
-    locations_to_inspect = next_set
-    next_set = Set.new
-    blizzard_presence = Array.new(h) { Array.new(w) { '.' } }
-    # move blizzards to their new locations
-    blizzards.each do |blizzard|
-      x, y, d = blizzard
-      case d
-      when '<' then x = (x - 2) % (w - 2) + 1
-      when '^' then y = (y - 2) % (h - 2) + 1
-      when '>' then x = x % (w - 2) + 1
-      when 'v' then y = y % (h - 2) + 1
-      end
-      blizzard[0] = x
-      blizzard[1] = y
-      blizzards_at_x_y = blizzard_presence[y][x]
-      blizzard_presence[y][x] = case blizzards_at_x_y
-                                when '.' then d
-                                when String then 2
-                                else blizzards_at_x_y + 1
-                                end
+    locations_to_inspect = queued_locations
+    queued_locations = []
+    # calculate the number of blizzards present at each location x,y
+    blizzard_presence.each { |row| row.fill(0) }
+    blizzards.each do |x0, y0, dx, dy|
+      bx = (x0 + dx * step - 1) % (w - 2) + 1
+      by = (y0 + dy * step - 1) % (h - 2) + 1
+      blizzard_presence[by][bx] += 1
     end
     # explore locations accessible in the Nth step
+    visited.each { |row| row.fill(false) }
     locations_to_inspect.each do |x, y|
       MOVES.each do |dx, dy|
         new_x, new_y = new_loc = [x + dx, y + dy]
-        next if new_x < 0 || new_x == w || new_y < 0 || new_y == h || blizzard_presence[new_y][new_x] != '.' || @input[new_y][new_x] == '#'
+        next if new_x < 0 || new_x == w || new_y < 0 || new_y == h ||
+                blizzard_presence[new_y][new_x] > 0 ||
+                visited[new_y][new_x] ||
+                @input[new_y][new_x] == '#'
 
         return step if new_loc == end_loc
 
-        next_set.add(new_loc)
-        blizzard_presence[new_y][new_x] = '*'
+        visited[new_y][new_x] = true
+        queued_locations << new_loc
       end
     end
   end
@@ -61,11 +57,11 @@ h = @input.length
 start_loc = [1, 0]
 end_loc = [w - 2, h - 1]
 
-t1 = shortest_travel_time(start_loc, end_loc, blizzards, w, h)
-puts("Part 1: #{t1}")
+steps = travel_from_to(start_loc, end_loc, blizzards, w, h, 0)
+puts("Part 1: #{steps}")
 
-t2 = shortest_travel_time(end_loc, start_loc, blizzards, w, h)
-t3 = shortest_travel_time(start_loc, end_loc, blizzards, w, h)
-puts("Part 2: #{t1 + t2 + t3}")
+steps = travel_from_to(end_loc, start_loc, blizzards, w, h, steps)
+steps = travel_from_to(start_loc, end_loc, blizzards, w, h, steps)
+puts("Part 2: #{steps}")
 
 puts("Exec time: #{Time.now - start_time}")
